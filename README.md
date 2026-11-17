@@ -19,7 +19,7 @@ Under the hood it is md-to-pdf (marked + Puppeteer + Chromium). KaTeX and the PD
 ```text
 md2pdf/
 ├── convert                     # CLI entry point (bash)
-├── src/                        # Markdown sources (default input folder)
+├── src/                        # Markdown sources (default input folder, gitignored)
 ├── config/
 │   └── md-to-pdf.config.js      # math extensions, theme, margins, link rewriting
 ├── styles/
@@ -113,9 +113,12 @@ Version note: md-to-pdf pins a specific Puppeteer version, so prefer Option A/B 
 git clone git@github.com:DarkskyX15/md2pdf.git
 cd md2pdf
 
+cp /path/to/your/*.md src/   # put your Markdown into src/ (not tracked by git)
 ./convert                    # src/*.md -> dist/*.pdf (light theme)
 ls dist
 ```
+
+`src/` is intentionally gitignored: this repository ships the toolchain only, and the Markdown you convert stays on your machine.
 
 ## CLI
 
@@ -139,8 +142,8 @@ Common invocations:
 ./convert                              # every document, light theme
 ./convert --theme dark                 # every document, dark theme
 ./convert --theme both                 # every document, light + dark
-./convert 02-ddpm.md                   # one document (resolved against src/ or cwd)
-./convert --theme dark 02-ddpm.md 07-math-optional.md
+./convert chapter-1.md                 # one document (resolved against src/ or cwd)
+./convert --theme dark chapter-1.md chapter-7.md
 ./convert --src notes --out build      # different source and output folders
 ./convert --no-sandbox                 # containers / CI without a Chrome sandbox
 ```
@@ -214,7 +217,7 @@ The formula was not picked up by KaTeX — this project only understands `$...$`
 
 **Literal `**` in the README table of contents**
 
-In `src/README.md`, the pattern `**[title](link)**：` (bold wrapping a link, immediately followed by a full-width punctuation) degrades to plain text in marked 4.x; adding a space before the punctuation (`**[x](y)** ：`) fixes it. This is a known marked issue with CJK punctuation boundaries, unrelated to link rewriting.
+The pattern `**[title](link)**：` (bold wrapping a link, immediately followed by a full-width punctuation) degrades to plain text in marked 4.x; adding a space before the punctuation (`**[x](y)** ：`) fixes it. This is a known marked issue with CJK punctuation boundaries, unrelated to link rewriting.
 
 **Slow conversions**
 
@@ -228,4 +231,4 @@ Every document and theme starts its own headless Chrome (about 1–2 seconds eac
 | [KaTeX](https://katex.org/) | 0.16.10 | MIT (fonts: SIL OFL 1.1) | `assets/katex/` |
 | [pdf-lib](https://pdf-lib.js.org/) | 1.17.1 | MIT | `assets/pdf-lib/` |
 
-Tutorial text under `src/` remains © its original author.
+Markdown sources under `src/` are gitignored and are not part of this repository.

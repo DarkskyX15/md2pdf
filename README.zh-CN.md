@@ -19,7 +19,7 @@
 ```text
 md2pdf/
 ├── convert                     # 命令行入口（bash）
-├── src/                        # Markdown 源文件（默认转换目录）
+├── src/                        # Markdown 源文件（默认转换目录，gitignore）
 ├── config/
 │   └── md-to-pdf.config.js      # md-to-pdf 配置：数学扩展、主题、页边距、链接改写
 ├── styles/
@@ -113,9 +113,12 @@ export PUPPETEER_CACHE_DIR="$HOME/.local/share/puppeteer"
 git clone git@github.com:DarkskyX15/md2pdf.git
 cd md2pdf
 
+cp /path/to/your/*.md src/   # 把自己的 Markdown 放进 src/（该目录不进版本库）
 ./convert                    # 转换 src/*.md，生成 dist/*.pdf（亮色）
 ls dist
 ```
+
+`src/` 故意不纳入版本控制：仓库只发布工具链，被转换的 Markdown 留在本地。
 
 ## 命令行
 
@@ -137,8 +140,8 @@ ls dist
 ./convert                              # 全部文档，亮色
 ./convert --theme dark                 # 全部文档，暗色
 ./convert --theme both                 # 全部文档，亮色 + 暗色
-./convert 02-ddpm.md                   # 只转一篇（相对 src/ 或当前目录均可）
-./convert --theme dark 02-ddpm.md 07-math-optional.md
+./convert chapter-1.md                 # 只转一篇（相对 src/ 或当前目录均可）
+./convert --theme dark chapter-1.md chapter-7.md
 ./convert --src notes --out build      # 换一个源目录和输出目录
 ./convert --no-sandbox                 # 容器 / CI 里没有 Chrome 沙箱时
 ```
@@ -212,7 +215,7 @@ Ubuntu 23.10+ 或容器里默认禁用了非特权 user namespace。加 `--no-sa
 
 **README 目录里出现字面量 `**`**
 
-`src/README.md` 的 `**[标题](链接)**：` 这种「粗体包链接 + 紧跟全角标点」的写法，marked 4.x 会退化成普通文本（把 `**[x](y)**：` 换成 `**[x](y)** ：` 就能正常加粗）。这是 marked 对 CJK 标点边界的已知问题，与链接改写无关。
+`**[标题](链接)**：` 这种「粗体包链接 + 紧跟全角标点」的写法，marked 4.x 会退化成普通文本（把 `**[x](y)**：` 换成 `**[x](y)** ：` 就能正常加粗）。这是 marked 对 CJK 标点边界的已知问题，与链接改写无关。
 
 **转换很慢**
 
@@ -226,4 +229,4 @@ Ubuntu 23.10+ 或容器里默认禁用了非特权 user namespace。加 `--no-sa
 | [KaTeX](https://katex.org/) | 0.16.10 | MIT（字体 SIL OFL 1.1） | `assets/katex/` |
 | [pdf-lib](https://pdf-lib.js.org/) | 1.17.1 | MIT | `assets/pdf-lib/` |
 
-`src/` 下的教程文字版权归原作者所有。
+`src/` 下的 Markdown 已被 gitignore，不属于本仓库内容。

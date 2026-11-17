@@ -1,6 +1,10 @@
 # 生成产物
 dist/
 
+# Markdown 源文件不纳入版本控制（放本地即可）
+src/*
+!src/.gitkeep
+
 # 依赖与本地缓存
 node_modules/
 .npm-cache/
