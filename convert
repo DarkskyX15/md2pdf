@@ -7,7 +7,7 @@ cd "$SCRIPT_DIR"
 
 THEME="light"
 OUT_DIR="dist"
-SRC_DIR=""   # 空表示仓库根目录
+SRC_DIR="src"   # 默认发现 src/ 下的 *.md
 NO_SANDBOX=0
 RELATIVE_LINKS=1
 MD_FILES=()
@@ -19,7 +19,7 @@ usage() {
 选项:
   -t, --theme <light|dark|both>  主题，默认 light
   -o, --out <dir>                输出目录，默认 dist
-  -s, --src <dir>                源目录（发现该目录下的 *.md），当前默认仓库根目录
+  -s, --src <dir>                源目录（发现该目录下的 *.md），默认 src
       --no-sandbox               受限环境（容器/CI）下以 --no-sandbox 启动 Chrome
       --no-relative-links        保留 file:// 绝对链接，不改写为相对链接
   -h, --help                     显示帮助
@@ -144,7 +144,7 @@ mkdir -p "$OUT_DIR"
 OUT_ABS="$(cd "$OUT_DIR" && pwd)"
 export MD2PDF_OUTPUT_DIR="$OUT_ABS"
 
-# 解析源目录：空值代表仓库根目录；相对路径以脚本所在目录为基准。
+# 解析源目录：相对路径以脚本所在目录为基准；空值退回仓库根目录。
 if [[ -z "$SRC_DIR" ]]; then
   SRC_DIR="$SCRIPT_DIR"
 else
