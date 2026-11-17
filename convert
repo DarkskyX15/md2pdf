@@ -166,9 +166,17 @@ if (( ${#MD_FILES[@]} == 0 )); then
   exit 0
 fi
 
-for md_file in "${MD_FILES[@]}"; do
-  [[ -f "$md_file" ]] || die "文件不存在: $md_file"
+for index in "${!MD_FILES[@]}"; do
+  md_file="${MD_FILES[$index]}"
+
+  # 显式参数先按当前目录解析，找不到再到源目录里找，方便直接写文件名。
+  if [[ ! -f "$md_file" && -f "$SRC_DIR/$md_file" ]]; then
+    md_file="$SRC_DIR/$md_file"
+  fi
+
+  [[ -f "$md_file" ]] || die "文件不存在: ${MD_FILES[$index]}"
   [[ "$md_file" == *.md ]] || die "不是 .md 文件: $md_file"
+  MD_FILES[$index]="$md_file"
 done
 
 # 同一批文件里出现同名 Markdown 会互相覆盖输出 PDF，提前报错。
