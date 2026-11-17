@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# 始终以脚本所在目录为工作目录，保证 assets/、styles/、config/ 路径稳定。
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+cd "$SCRIPT_DIR"
+
+THEME="light"
+OUT_DIR="dist"
+NO_SANDBOX=0
+RELATIVE_LINKS=1
+MD_FILES=()
+
+usage() {
+  cat <<'EOF'
+用法: ./convert [选项] [file.md ...]
+
+选项:
+  -t, --theme <light|dark|both>  主题，默认 light
+  -o, --out <dir>                输出目录，默认 dist
+      --no-sandbox               受限环境（容器/CI）下以 --no-sandbox 启动 Chrome
+      --no-relative-links        保留 file:// 绝对链接，不改写为相对链接
+  -h, --help                     显示帮助
+
+命名规则:
+  light / dark : <输出目录>/<文件名>.pdf
+  both         : <输出目录>/<文件名>.light.pdf
+                 <输出目录>/<文件名>.dark.pdf
+
+链接:
+  相对 .md 链接会改写为同一输出目录下的相对文件链接，整个目录可整体搬移；
+  找不到目标的本地链接只保留文字；http(s) 等外部链接不变。
+
+示例:
+  ./convert
+  ./convert --theme both
+  ./convert --theme dark 02-ddpm.md 07-math-optional.md
+EOF
+}
+
+die() {
+  echo "错误: $*" >&2
+  exit 1
+}
+
+# 参数解析
+while (( $# > 0 )); do
+  case "$1" in
+    -t|--theme)
+      if (( $# < 2 )); then
+        die "选项 $1 缺少参数"
+      fi
+      THEME="$2"
+      shift 2
+      ;;
+    --theme=*)
+      THEME="${1#*=}"
+      shift
+      ;;
+    -o|--out)
+      if (( $# < 2 )); then
+        die "选项 $1 缺少参数"
+      fi
+      OUT_DIR="$2"
+      shift 2
+      ;;
+    --out=*)
+      OUT_DIR="${1#*=}"
+      shift
+      ;;
+    --no-sandbox)
+      NO_SANDBOX=1
+      shift
+      ;;
+    --no-relative-links)
+      RELATIVE_LINKS=0
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      while (( $# > 0 )); do
+        MD_FILES+=("$1")
+        shift
+      done
+      ;;
+    -*)
+      die "未知选项: $1（使用 --help 查看帮助）"
+      ;;
+    *)
+      MD_FILES+=("$1")
+      shift
+      ;;
+  esac
+done
+
+case "$THEME" in
+  light|dark|both) ;;
+  *) die "主题必须是 light、dark 或 both，收到: $THEME" ;;
+esac
+
+if [[ -z "$OUT_DIR" ]]; then
+  die "输出目录不能为空"
+fi
+
+command -v md-to-pdf >/dev/null 2>&1 || \
+  die "md-to-pdf 未安装。请先运行: npm i -g md-to-pdf"
+
+if (( RELATIVE_LINKS )); then
+  command -v node >/dev/null 2>&1 || die "未找到 node，无法改写相对链接"
+  [[ -f "$SCRIPT_DIR/tools/relativize-links.js" ]] || \
+    die "缺少 tools/relativize-links.js"
+  [[ -f "$SCRIPT_DIR/assets/pdf-lib/pdf-lib.min.js" ]] || \
+    die "缺少 assets/pdf-lib/pdf-lib.min.js"
+fi
+
+CONFIG_FILE="$SCRIPT_DIR/config/md-to-pdf.config.js"
+[[ -f "$CONFIG_FILE" ]] || die "配置文件不存在: $CONFIG_FILE"
+[[ -f "$SCRIPT_DIR/assets/katex/katex.min.js" ]] || \
+  die "缺少 assets/katex/katex.min.js"
+[[ -f "$SCRIPT_DIR/assets/katex/katex.min.css" ]] || \
+  die "缺少 assets/katex/katex.min.css"
+[[ -d "$SCRIPT_DIR/assets/katex/fonts" ]] || \
+  die "缺少 assets/katex/fonts"
+
+mkdir -p "$OUT_DIR"
+OUT_ABS="$(cd "$OUT_DIR" && pwd)"
+export MD2PDF_OUTPUT_DIR="$OUT_ABS"
+
+# 没有显式文件参数时，转换脚本所在目录的全部 .md
+if (( ${#MD_FILES[@]} == 0 )); then
+  shopt -s nullglob
+  default_files=(*.md)
+  shopt -u nullglob
+  MD_FILES=("${default_files[@]}")
+fi
+
+if (( ${#MD_FILES[@]} == 0 )); then
+  echo "当前目录下没有找到 .md 文件，无需转换。"
+  exit 0
+fi
+
+for md_file in "${MD_FILES[@]}"; do
+  [[ -f "$md_file" ]] || die "文件不存在: $md_file"
+  [[ "$md_file" == *.md ]] || die "不是 .md 文件: $md_file"
+done
+
+if [[ "$THEME" == "both" ]]; then
+  themes=(light dark)
+else
+  themes=("$THEME")
+fi
+
+# 受限环境下把 Chrome 的配置/缓存放到临时目录，结束后清理。
+CHROME_TMP=""
+cleanup() {
+  if [[ -n "$CHROME_TMP" && -d "$CHROME_TMP" ]]; then
+    rm -rf -- "$CHROME_TMP" || true
+  fi
+}
+trap cleanup EXIT
+
+if (( NO_SANDBOX )); then
+  CHROME_TMP="$(mktemp -d "${TMPDIR:-/tmp}/md2pdf-chrome.XXXXXX")"
+  export MD2PDF_NO_SANDBOX=1
+  export MD2PDF_CHROME_PROFILE="$CHROME_TMP/profile"
+  export XDG_CONFIG_HOME="$CHROME_TMP/config"
+  mkdir -p "$MD2PDF_CHROME_PROFILE" "$XDG_CONFIG_HOME"
+fi
+
+extract_title() {
+  local file="$1"
+  local title=""
+
+  title="$(grep -m1 -E '^#[[:space:]]+' -- "$file" 2>/dev/null | \
+    sed -E 's/^#[[:space:]]+//; s/[[:space:]]+$//')" || true
+
+  if [[ -z "$title" ]]; then
+    title="$(basename -- "$file" .md)"
+  fi
+
+  printf '%s' "$title"
+}
+
+total=0
+failed=0
+failed_items=()
+link_failed=0
+link_failed_items=()
+
+for md_file in "${MD_FILES[@]}"; do
+  base="$(basename -- "$md_file" .md)"
+  title="$(extract_title "$md_file")"
+  src_pdf="${md_file%.md}.pdf"
+  export MD2PDF_SOURCE_DIR="$(cd -- "$(dirname -- "$md_file")" >/dev/null 2>&1 && pwd)"
+
+  for theme_name in "${themes[@]}"; do
+    if [[ "$THEME" == "both" ]]; then
+      target="$OUT_ABS/${base}.${theme_name}.pdf"
+      export MD2PDF_LINK_SUFFIX=".${theme_name}.pdf"
+    else
+      target="$OUT_ABS/${base}.pdf"
+      export MD2PDF_LINK_SUFFIX=".pdf"
+    fi
+
+    total=$((total + 1))
+    echo "==> [$theme_name] $md_file -> $target"
+
+    # md-to-pdf 在源文件旁生成 PDF；先清掉上次的残留文件。
+    rm -f -- "$src_pdf"
+
+    if ! MD2PDF_THEME="$theme_name" md-to-pdf "$md_file" \
+      --config-file "$CONFIG_FILE" \
+      --basedir "$SCRIPT_DIR" \
+      --document-title "$title"; then
+      rm -f -- "$src_pdf"
+      failed=$((failed + 1))
+      failed_items+=("$md_file ($theme_name)")
+      echo "    转换失败" >&2
+      continue
+    fi
+
+    if [[ ! -f "$src_pdf" ]]; then
+      failed=$((failed + 1))
+      failed_items+=("$md_file ($theme_name): 未生成 PDF")
+      echo "    未找到生成的 PDF: $src_pdf" >&2
+      continue
+    fi
+
+    src_abs="$(realpath -m -- "$src_pdf")"
+    if [[ "$src_abs" != "$target" ]]; then
+      mv -f -- "$src_pdf" "$target"
+    fi
+
+    # 把 config 写出的 file:// 绝对链接改写成相对文件链接。
+    if (( RELATIVE_LINKS )); then
+      if ! node "$SCRIPT_DIR/tools/relativize-links.js" "$target"; then
+        link_failed=$((link_failed + 1))
+        link_failed_items+=("$target")
+      fi
+    fi
+
+    echo "    完成"
+  done
+done
+
+echo
+if (( link_failed > 0 )); then
+  echo "警告：$link_failed 个 PDF 的相对链接改写失败（链接保持 file:// 绝对路径）" >&2
+  for item in "${link_failed_items[@]}"; do
+    echo "  未改写: $item" >&2
+  done
+fi
+
+if (( failed > 0 )); then
+  echo "完成：成功 $((total - failed)) / $total"
+  for item in "${failed_items[@]}"; do
+    echo "  失败: $item"
+  done
+  exit 1
+fi
+
+echo "全部完成：共 $total 个 PDF，输出目录: $OUT_ABS"

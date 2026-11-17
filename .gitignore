@@ -1,0 +1,17 @@
+# 生成产物
+dist/
+
+# 依赖与本地缓存
+node_modules/
+.npm-cache/
+
+# 运行时临时文件
+*.tmp
+*.links-*.tmp
+.probe/
+.chrome-profile/
+
+# 编辑器 / 系统
+.DS_Store
+.idea/
+.vscode/

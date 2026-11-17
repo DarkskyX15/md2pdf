@@ -1,0 +1,79 @@
+/* Dark theme. @page background paints the whole sheet, not just the content box. */
+
+@page {
+  background: #1b1f24;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #1b1f24;
+  --fg: #e6edf3;
+  --muted: #9da7b3;
+  --link: #6cb6ff;
+  --border: #30363d;
+  --code-bg: #161b22;
+  --code-fg: #e6edf3;
+  --quote-bg: #22272e;
+  --stripe: #21262d;
+  --thead-bg: #262c36;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+h2 {
+  border-bottom: 1px solid var(--border);
+}
+
+a {
+  color: var(--link);
+}
+
+hr {
+  border-top-color: var(--border);
+}
+
+blockquote {
+  color: var(--muted);
+  border-left-color: var(--border);
+  background: var(--quote-bg);
+}
+
+code {
+  color: var(--code-fg);
+  background: var(--code-bg);
+  border-color: var(--border);
+}
+
+pre {
+  background: var(--code-bg);
+  border-color: var(--border);
+}
+
+pre code {
+  background: transparent;
+  border: 0;
+}
+
+th,
+td {
+  border-color: var(--border);
+}
+
+thead th {
+  background: var(--thead-bg);
+}
+
+tbody tr:nth-child(even) {
+  background: var(--stripe);
+}
+
+img {
+  background: transparent;
+}
