@@ -138,17 +138,17 @@ async function relativize(pdfPath) {
 async function main() {
   const files = process.argv.slice(2);
   if (files.length === 0) {
-    console.error('用法: node tools/relativize-links.js <file.pdf> [<file.pdf> ...]');
+    console.error('Usage: node tools/relativize-links.js <file.pdf> [<file.pdf> ...]');
     process.exit(2);
   }
 
   for (const file of files) {
     try {
       const { changed, keptAbsolute } = await relativize(file);
-      const note = keptAbsolute > 0 ? `，${keptAbsolute} 个目录外链接保持绝对路径` : '';
-      console.log(`    相对链接: ${changed} 个${note}`);
+      const note = keptAbsolute > 0 ? `, ${keptAbsolute} kept absolute (outside output folder)` : '';
+      console.log(`    relative links: ${changed}${note}`);
     } catch (error) {
-      console.error(`    相对链接改写失败: ${file}: ${error.message}`);
+      console.error(`    failed to rewrite relative links: ${file}: ${error.message}`);
       process.exitCode = 1;
     }
   }

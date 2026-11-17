@@ -130,11 +130,10 @@ Options:
   -o, --out <dir>                Output folder, default dist
   -s, --src <dir>                Source folder (discovers *.md), default src
       --no-sandbox               Launch Chrome with --no-sandbox (containers/CI)
-      --no-relative-links        Keep file:// links instead of rewriting to relative
+      --no-relative-links        Keep absolute file:// links instead of relative
   -h, --help                     Show help
 ```
 
-> `./convert --help` currently prints the same options in Chinese; the flags, defaults and behaviour are identical.
 
 Common invocations:
 

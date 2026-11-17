@@ -123,15 +123,17 @@ ls dist
 ## 命令行
 
 ```text
-用法: ./convert [选项] [file.md ...]
+Usage: ./convert [options] [file.md ...]
 
-选项:
-  -t, --theme <light|dark|both>  主题，默认 light
-  -o, --out <dir>                输出目录，默认 dist
-  -s, --src <dir>                源目录（发现该目录下的 *.md），默认 src
-      --no-sandbox               受限环境（容器/CI）下以 --no-sandbox 启动 Chrome
-      --no-relative-links        保留 file:// 绝对链接，不改写为相对链接
-  -h, --help                     显示帮助
+Options:
+  -t, --theme <light|dark|both>  Theme, default light
+  -o, --out <dir>                Output folder, default dist
+  -s, --src <dir>                Source folder (discovers *.md), default src
+      --no-sandbox               Launch Chrome with --no-sandbox (containers/CI)
+      --no-relative-links        Keep absolute file:// links instead of relative
+  -h, --help                     Show help
+
+（脚本的运行提示与帮助信息为英文。）
 ```
 
 常用示例：
