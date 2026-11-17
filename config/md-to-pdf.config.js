@@ -77,8 +77,8 @@ function renderLink(href, title, text) {
   }
 
   if (pathPart.toLowerCase().endsWith('.md')) {
-    const relativeTarget = path.relative(rootDir, targetPath);
-    if (!relativeTarget || relativeTarget.startsWith('..') || path.isAbsolute(relativeTarget)) {
+    // 只有同目录下的 Markdown 才会被一起转换，链接到别处的 .md 只保留文字。
+    if (path.dirname(targetPath) !== sourceDir) {
       return text;
     }
 
